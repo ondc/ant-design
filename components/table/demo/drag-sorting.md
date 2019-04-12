@@ -19,67 +19,44 @@ import { DragDropContext, DragSource, DropTarget } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
 import update from 'immutability-helper';
 
-function dragDirection(
-  dragIndex,
-  hoverIndex,
-  initialClientOffset,
-  clientOffset,
-  sourceClientOffset,
-) {
-  const hoverMiddleY = (initialClientOffset.y - sourceClientOffset.y) / 2;
-  const hoverClientY = clientOffset.y - sourceClientOffset.y;
-  if (dragIndex < hoverIndex && hoverClientY > hoverMiddleY) {
-    return 'downward';
-  }
-  if (dragIndex > hoverIndex && hoverClientY < hoverMiddleY) {
-    return 'upward';
+let dragingIndex = -1;
+
+class BodyRow extends React.Component {
+  render() {
+    const {
+      isOver,
+      connectDragSource,
+      connectDropTarget,
+      moveRow,
+      ...restProps
+    } = this.props;
+    const style = { ...restProps.style, cursor: 'move' };
+
+    let className = restProps.className;
+    if (isOver) {
+      if (restProps.index > dragingIndex) {
+        className += ' drop-over-downward';
+      }
+      if (restProps.index < dragingIndex) {
+        className += ' drop-over-upward';
+      }
+    }
+
+    return connectDragSource(
+      connectDropTarget(
+        <tr
+          {...restProps}
+          className={className}
+          style={style}
+        />
+      )
+    );
   }
 }
 
-let BodyRow = (props) => {
-  const {
-    isOver,
-    connectDragSource,
-    connectDropTarget,
-    moveRow,
-    dragRow,
-    clientOffset,
-    sourceClientOffset,
-    initialClientOffset,
-    ...restProps
-  } = props;
-  const style = { ...restProps.style, cursor: 'move' };
-
-  let className = restProps.className;
-  if (isOver && initialClientOffset) {
-    const direction = dragDirection(
-      dragRow.index,
-      restProps.index,
-      initialClientOffset,
-      clientOffset,
-      sourceClientOffset
-    );
-    if (direction === 'downward') {
-      className += ' drop-over-downward';
-    }
-    if (direction === 'upward') {
-      className += ' drop-over-upward';
-    }
-  }
-
-  return connectDragSource(
-    connectDropTarget(
-      <tr
-        {...restProps}
-        className={className}
-        style={style}
-      />
-    )
-  );
-};
-
 const rowSource = {
   beginDrag(props) {
+    dragingIndex = props.index;
     return {
       index: props.index,
     };
@@ -107,17 +84,21 @@ const rowTarget = {
   },
 };
 
-BodyRow = DropTarget('row', rowTarget, (connect, monitor) => ({
-  connectDropTarget: connect.dropTarget(),
-  isOver: monitor.isOver(),
-  sourceClientOffset: monitor.getSourceClientOffset(),
-}))(
-  DragSource('row', rowSource, (connect, monitor) => ({
-    connectDragSource: connect.dragSource(),
-    dragRow: monitor.getItem(),
-    clientOffset: monitor.getClientOffset(),
-    initialClientOffset: monitor.getInitialClientOffset(),
-  }))(BodyRow)
+const DragableBodyRow = DropTarget(
+  'row',
+  rowTarget,
+  (connect, monitor) => ({
+    connectDropTarget: connect.dropTarget(),
+    isOver: monitor.isOver(),
+  }),
+)(
+  DragSource(
+    'row',
+    rowSource,
+    (connect) => ({
+      connectDragSource: connect.dragSource(),
+    }),
+  )(BodyRow),
 );
 
 const columns = [{
@@ -156,7 +137,7 @@ class DragSortingTable extends React.Component {
 
   components = {
     body: {
-      row: BodyRow,
+      row: DragableBodyRow,
     },
   }
 

@@ -1,8 +1,8 @@
 ---
 order: 4
 title:
-    zh-CN: 搜索框
-    en-US: Search box
+  zh-CN: 搜索框
+  en-US: Search box
 ---
 
 ## zh-CN
@@ -15,6 +15,7 @@ Example of creating a search box by grouping a standard input with a search butt
 
 ````jsx
 import { Input } from 'antd';
+
 const Search = Input.Search;
 
 ReactDOM.render(
@@ -31,7 +32,13 @@ ReactDOM.render(
       enterButton
     />
     <br /><br />
-    <Search placeholder="input search text" enterButton="Search" size="large" />
-  </div>
-, mountNode);
+    <Search
+      placeholder="input search text"
+      enterButton="Search"
+      size="large"
+      onSearch={value => console.log(value)}
+    />
+  </div>,
+  mountNode
+);
 ````

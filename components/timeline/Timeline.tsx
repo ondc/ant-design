@@ -2,6 +2,7 @@ import * as React from 'react';
 import classNames from 'classnames';
 import TimelineItem, { TimeLineItemProps } from './TimelineItem';
 import Icon from '../icon';
+import { ConfigConsumer, ConfigConsumerProps } from '../config-provider';
 
 export interface TimelineProps {
   prefixCls?: string;
@@ -10,40 +11,84 @@ export interface TimelineProps {
   pending?: React.ReactNode;
   pendingDot?: React.ReactNode;
   style?: React.CSSProperties;
+  reverse?: boolean;
+  mode?: 'left' | 'alternate' | 'right';
 }
 
 export default class Timeline extends React.Component<TimelineProps, any> {
-  static Item = TimelineItem as React.ClassicComponentClass<TimeLineItemProps>;
+  static Item: React.SFC<TimeLineItemProps> = TimelineItem;
   static defaultProps = {
-    prefixCls: 'ant-timeline',
+    reverse: false,
+    mode: '',
   };
 
-  render() {
-    const { prefixCls, children, pending, pendingDot, className, ...restProps } = this.props;
+  renderTimeline = ({ getPrefixCls }: ConfigConsumerProps) => {
+    const {
+      prefixCls: customizePrefixCls,
+      pending = null,
+      pendingDot,
+      children,
+      className,
+      reverse,
+      mode,
+      ...restProps
+    } = this.props;
+    const prefixCls = getPrefixCls('timeline', customizePrefixCls);
     const pendingNode = typeof pending === 'boolean' ? null : pending;
-    const classString = classNames(prefixCls, {
-      [`${prefixCls}-pending`]: !!pending,
-    }, className);
-    // Remove falsy items
-    const truthyItems = React.Children.toArray(children).filter(item => !!item);
-    const items = React.Children.map(truthyItems, (ele: React.ReactElement<any>, idx) =>
-      React.cloneElement(ele, {
-        last: idx === (React.Children.count(truthyItems) - 1),
-      }),
+    const classString = classNames(
+      prefixCls,
+      {
+        [`${prefixCls}-pending`]: !!pending,
+        [`${prefixCls}-reverse`]: !!reverse,
+        [`${prefixCls}-${mode}`]: !!mode,
+      },
+      className,
     );
-    const pendingItem = (!!pending) ? (
-      <TimelineItem
-        pending={!!pending}
-        dot={pendingDot || <Icon type="loading" />}
-      >
+
+    const pendingItem = !!pending ? (
+      <TimelineItem pending={!!pending} dot={pendingDot || <Icon type="loading" />}>
         {pendingNode}
       </TimelineItem>
     ) : null;
+
+    const timeLineItems = !!reverse
+      ? [pendingItem, ...React.Children.toArray(children).reverse()]
+      : [...React.Children.toArray(children), pendingItem];
+
+    // Remove falsy items
+    const truthyItems = timeLineItems.filter(item => !!item);
+    const itemsCount = React.Children.count(truthyItems);
+    const lastCls = `${prefixCls}-item-last`;
+    const items = React.Children.map(truthyItems, (ele: React.ReactElement<any>, idx) =>
+      React.cloneElement(ele, {
+        className: classNames([
+          ele.props.className,
+          !reverse && !!pending
+            ? idx === itemsCount - 2
+              ? lastCls
+              : ''
+            : idx === itemsCount - 1
+            ? lastCls
+            : '',
+          mode === 'alternate'
+            ? idx % 2 === 0
+              ? `${prefixCls}-item-left`
+              : `${prefixCls}-item-right`
+            : mode === 'right'
+            ? `${prefixCls}-item-right`
+            : '',
+        ]),
+      }),
+    );
+
     return (
       <ul {...restProps} className={classString}>
         {items}
-        {pendingItem}
       </ul>
     );
+  };
+
+  render() {
+    return <ConfigConsumer>{this.renderTimeline}</ConfigConsumer>;
   }
 }
